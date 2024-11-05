@@ -14,7 +14,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import random
 
-# 数据集定义
+
 class AugmentedDepthDataset(Dataset):
     def __init__(self, image_paths, depth_paths, transform=None):
         self.image_paths = image_paths
@@ -47,7 +47,6 @@ class AugmentedDepthDataset(Dataset):
         depth = np.array(depth_img)
         depth = torch.from_numpy(depth).unsqueeze(0)  # [1, H, W]
 
-        # 随机裁剪
         i, j, h, w = transforms.RandomCrop.get_params(
             depth_img, output_size=(512, 512))
         input_tensor = transforms.functional.crop(input_tensor, i, j, h, w)
@@ -55,7 +54,6 @@ class AugmentedDepthDataset(Dataset):
 
         return input_tensor, depth
 
-# 数据加载器定义
 def get_data_loaders(dataset_dir, batch_size=24, num_workers=4):
     image_dir = os.path.join(dataset_dir, 'image')
     depth_dir = os.path.join(dataset_dir, 'depth')
@@ -95,7 +93,7 @@ def get_data_loaders(dataset_dir, batch_size=24, num_workers=4):
                             shuffle=True, num_workers=num_workers)
     return dataloader
 
-# 训练脚本
+
 dataset_dir = 'dataset'
 train_loader = get_data_loaders(dataset_dir, batch_size=16)
 
@@ -103,7 +101,7 @@ model = UNet()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
-criterion = nn.L1Loss(reduction='none')  # 不进行内部求平均
+criterion = nn.L1Loss(reduction='none')  
 optimizer = optim.Adam(model.parameters(), lr=0.00001)
 alpha = 0.7
 num_epochs = 1000000
@@ -120,8 +118,8 @@ for epoch in tqdm(range(num_epochs)):
         outputs = model(inputs)
         output_gradient = torch.gradient(outputs, dim=(2, 3))
         pixel_errors = torch.abs(outputs - depths).detach()
-        weights = (pixel_errors ** 2) + 1e-8  # 加上小常数防止除零
-        weights = weights / torch.mean(weights)  # 归一化
+        weights = (pixel_errors ** 2) + 1e-8 
+        weights = weights / torch.mean(weights)  
         l1_loss = criterion(outputs, depths)  # [batch_size, 1, H, W]
         weighted_l1_loss = torch.mean(l1_loss * weights)
         loss = alpha * weighted_l1_loss 
@@ -144,8 +142,6 @@ for epoch in tqdm(range(num_epochs)):
 
     if (epoch + 1) % 500 == 0:
         torch.save(model.state_dict(), f'model_arg/unet_epoch_{epoch+1}.pth')
-
-# 绘制损失曲线
 plt.figure()
 plt.plot(range(1, num_epochs + 1), losses, label='Training Loss')
 plt.xlabel('Epoch')
@@ -155,4 +151,4 @@ plt.legend()
 plt.savefig('training_loss_plot.png')
 plt.show()
 
-print('训练完成')
+print('Finished Training')
